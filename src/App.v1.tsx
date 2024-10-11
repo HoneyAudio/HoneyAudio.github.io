@@ -1,0 +1,486 @@
+"use client";
+
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import cloud from "d3-cloud";
+import {
+  Facebook,
+  Github,
+  Loader2,
+  Menu,
+  Pause,
+  Play,
+  Twitter,
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+const voiceOptions = [
+  { text: "👩 Female", value: "female", size: 0 },
+  { text: "👨 Male", value: "male", size: 0 },
+];
+
+const languageOptions = [
+  { text: "🇩🇪 German", value: "de", size: 0 },
+  { text: "🇺🇸 English", value: "en", size: 0 },
+  { text: "🇪🇸 Spanish", value: "es", size: 0 },
+  { text: "🇫🇷 French", value: "fr", size: 0 },
+  { text: "🇮🇹 Italian", value: "it", size: 0 },
+  { text: "🇵🇹 Portuguese", value: "pt", size: 0 },
+];
+
+const nameOptions = [
+  { text: "Ava", value: "ava", size: 0 },
+  { text: "Emma", value: "emma", size: 0 },
+  { text: "Isabella", value: "isabella", size: 0 },
+  { text: "James", value: "james", size: 0 },
+  { text: "John", value: "john", size: 0 },
+  { text: "Michael", value: "michael", size: 0 },
+  { text: "Olivia", value: "olivia", size: 0 },
+  { text: "Robert", value: "robert", size: 0 },
+  { text: "Sophia", value: "sophia", size: 0 },
+  { text: "William", value: "william", size: 0 },
+];
+
+const topicOptions = [
+  { text: "🏔️ Adventure", value: "adventure", size: 0 },
+  { text: "🤣 Comedy", value: "comedy", size: 0 },
+  { text: "🎭 Drama", value: "drama", size: 0 },
+  { text: "🕵️ Mystery", value: "mystery", size: 0 },
+  { text: "💖 Romance", value: "romance", size: 0 },
+  { text: "🚀 Sci-Fi", value: "scifi", size: 0 },
+];
+
+interface WordCloudProps {
+  words: { text: string; value: string }[];
+  width: number;
+  height: number;
+  onSelect: (value: string) => void;
+  selectedWord: string;
+  isMobile: boolean;
+}
+
+const WordCloud: React.FC<WordCloudProps> = ({
+  words,
+  width,
+  height,
+  onSelect,
+  selectedWord,
+  isMobile,
+}) => {
+  const [cloudWords, setCloudWords] = useState<
+    { text: string; size: number; x: number; y: number }[]
+  >([]);
+  const [showSelect, setShowSelect] = useState(false);
+
+  useEffect(() => {
+    cloud()
+      .size([width, height])
+      .words(
+        words.map((w) => ({
+          ...w,
+          size: Math.max(
+            10,
+            Math.min(
+              30,
+              Math.sqrt((width * height) / words.length) * Math.random()
+            )
+          ),
+        }))
+      )
+      .padding(2)
+      .rotate(() => 0)
+      .spiral("archimedean")
+      .font("Jura")
+      .fontSize((d) => d.size!)
+      .on("end", (computedWords) => {
+        setCloudWords(
+          computedWords as {
+            text: string;
+            size: number;
+            x: number;
+            y: number;
+          }[]
+        );
+      })
+      .start();
+  }, [words, width, height]);
+
+  const handleWordClick = (word: string) => {
+    const selectedOption = words.find((w) => w.text === word);
+    if (selectedOption) {
+      if (isMobile) {
+        setShowSelect(true);
+      } else {
+        onSelect(selectedOption.value);
+      }
+    }
+  };
+
+  const handleSelectChange = (value: string) => {
+    onSelect(value);
+    setShowSelect(false);
+  };
+
+  if (isMobile && showSelect) {
+    return (
+      <Select onValueChange={handleSelectChange} value={selectedWord}>
+        <SelectTrigger className="w-[180px] bg-gray-800 text-white border-gray-700 focus:ring-0 focus:ring-offset-0">
+          <SelectValue placeholder="Select option" />
+        </SelectTrigger>
+        <SelectContent className="bg-gray-800 text-white border-gray-700">
+          {words
+            .sort((a, b) => a.text.localeCompare(b.text))
+            .map((option) => (
+              <SelectItem
+                key={option.value}
+                value={option.value}
+                className="hover:bg-gray-700 focus:bg-gray-700 focus:text-white"
+              >
+                {option.text}
+              </SelectItem>
+            ))}
+        </SelectContent>
+      </Select>
+    );
+  }
+
+  return (
+    <svg width={width} height={height}>
+      <g transform={`translate(${width / 2},${height / 2})`}>
+        {cloudWords.map((word, i) => (
+          <text
+            key={i}
+            style={{
+              fontSize: `${word.size}px`,
+              fontFamily: "Jura",
+              cursor: "pointer",
+              fill:
+                word.text === words.find((w) => w.value === selectedWord)?.text
+                  ? "#ffffff"
+                  : "rgba(255,255,255,0.6)",
+              transition: "all 0.3s ease",
+            }}
+            textAnchor="middle"
+            transform={`translate(${word.x},${word.y})`}
+            onClick={() => handleWordClick(word.text)}
+          >
+            {word.text}
+          </text>
+        ))}
+      </g>
+    </svg>
+  );
+};
+
+const CircularProgressBar: React.FC<{ progress: number }> = ({ progress }) => {
+  const radius = 40;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference * (1 - progress);
+
+  return (
+    <svg
+      className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
+      width="100"
+      height="100"
+    >
+      <circle
+        className="text-blue-500/10"
+        strokeWidth="4"
+        stroke="currentColor"
+        fill="transparent"
+        r={radius}
+        cx="50"
+        cy="50"
+      />
+      <circle
+        className="text-blue-500 transition-all duration-500 ease-in-out"
+        strokeWidth="4"
+        strokeDasharray={circumference}
+        strokeDashoffset={strokeDashoffset}
+        strokeLinecap="round"
+        stroke="currentColor"
+        fill="transparent"
+        r={radius}
+        cx="50"
+        cy="50"
+      />
+    </svg>
+  );
+};
+
+export default function Component() {
+  const [selectedVoice, setSelectedVoice] = useState("");
+  const [selectedLanguage, setSelectedLanguage] = useState("");
+  const [selectedName, setSelectedName] = useState("");
+  const [selectedTopic, setSelectedTopic] = useState("");
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [audioFiles, setAudioFiles] = useState<string[]>([]);
+  const [currentAudioIndex, setCurrentAudioIndex] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(new Audio());
+  const nextAudioRef = useRef<HTMLAudioElement | null>(new Audio());
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        showMenu &&
+        !(event.target as HTMLElement).closest(".menu-container")
+      ) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener("click", handleClickOutside);
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, [showMenu]);
+
+  const simulateAPICall = async () => {
+    setIsLoading(true);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const newAudioFiles = [
+      "https://download.samplelib.com/mp3/sample-3s.mp3",
+      "https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3",
+      "https://download.samplelib.com/mp3/sample-6s.mp3",
+      "https://download.samplelib.com/mp3/sample-9s.mp3",
+    ];
+    setAudioFiles(newAudioFiles);
+    setCurrentAudioIndex(0);
+    setIsLoading(false);
+    return newAudioFiles;
+  };
+
+  const handleSelection = useCallback(
+    (setter: React.Dispatch<React.SetStateAction<string>>) =>
+      async (value: string) => {
+        setter(value);
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.src = "";
+        }
+        setIsPlaying(false);
+        setProgress(0);
+        const newAudioFiles = await simulateAPICall();
+        loadAudio(newAudioFiles[0], newAudioFiles[1]);
+      },
+    []
+  );
+
+  const loadAudio = (currentAudioUrl: string, nextAudioUrl?: string) => {
+    if (audioRef.current) {
+      audioRef.current.src = currentAudioUrl;
+      audioRef.current.load();
+    }
+    if (nextAudioUrl && nextAudioRef.current) {
+      nextAudioRef.current.src = nextAudioUrl;
+      nextAudioRef.current.load();
+    }
+  };
+
+  useEffect(() => {
+    (async () => {
+      const newAudioFiles = await simulateAPICall();
+      loadAudio(newAudioFiles[0], newAudioFiles[1]);
+    })();
+  }, []);
+
+  const playNextAudio = useCallback(() => {
+    if (currentAudioIndex < audioFiles.length - 1) {
+      setCurrentAudioIndex((prevIndex) => prevIndex + 1);
+      const currentAudio = audioFiles[currentAudioIndex + 1];
+      const nextAudio = audioFiles[currentAudioIndex + 2];
+      loadAudio(currentAudio, nextAudio);
+      audioRef.current?.play();
+    } else {
+      setCurrentAudioIndex(0);
+      setIsPlaying(false);
+      setProgress(0);
+      (async () => {
+        const newAudioFiles = await simulateAPICall();
+        loadAudio(newAudioFiles[0], newAudioFiles[1]);
+      })();
+    }
+  }, [audioFiles, currentAudioIndex]);
+
+  const togglePlayPause = useCallback(() => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  }, [isPlaying]);
+
+  useEffect(() => {
+    if (!audioRef.current) return;
+
+    const audio = audioRef.current;
+
+    const updateProgress = () => {
+      if (audio.duration) {
+        const currentProgress =
+          audio.currentTime / audio.duration + currentAudioIndex;
+        setProgress(currentProgress / audioFiles.length);
+      }
+    };
+
+    audio.addEventListener("timeupdate", updateProgress);
+    audio.addEventListener("ended", playNextAudio);
+
+    return () => {
+      audio.removeEventListener("timeupdate", updateProgress);
+      audio.removeEventListener("ended", playNextAudio);
+    };
+  }, [audioFiles, currentAudioIndex, playNextAudio]);
+
+  const renderSelector = (
+    options: { text: string; value: string }[],
+    selected: string,
+    onSelect: (value: string) => void
+  ) => {
+    return (
+      <WordCloud
+        words={options}
+        width={300}
+        height={200}
+        onSelect={onSelect}
+        selectedWord={selected}
+        isMobile={isMobile}
+      />
+    );
+  };
+
+  return (
+    <div className="h-screen w-screen flex flex-col justify-between bg-gradient-to-br from-purple-800 via-blue-900 to-teal-800 font-jura">
+      <div className="flex justify-between items-start p-4">
+        <div className="bg-gray-900 bg-opacity-50 rounded-lg p-2 text-white font-bold text-xl hover:bg-opacity-100 transition-opacity duration-300">
+          honey 🍯 audio
+        </div>
+        <div className="relative menu-container">
+          <Button
+            onClick={() => setShowMenu(!showMenu)}
+            className="bg-gray-900 bg-opacity-50 rounded-lg p-2 text-white hover:bg-opacity-100 transition-opacity duration-300"
+          >
+            <Menu />
+          </Button>
+          {showMenu && (
+            <div className="absolute right-0 mt-2 w-48 bg-slate-900 bg-opacity-90 rounded-lg shadow-xl z-10">
+              <a
+                href="#"
+                className="block px-4 py-2 text-white hover:bg-slate-800/50 rounded-lg"
+              >
+                Profile
+              </a>
+              <a
+                href="#"
+                className="block px-4 py-2 text-white hover:bg-slate-800/50 rounded-lg"
+              >
+                Settings
+              </a>
+              <a
+                href="#"
+                className="block px-4 py-2 text-white hover:bg-slate-800/50 rounded-lg"
+              >
+                Logout
+              </a>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap justify-center items-center flex-grow m-6">
+        <div className="w-1/2 h-1/2 pr-1 pb-1">
+          <div className="bg-slate-950/20 h-full flex items-center justify-center rounded-3xl rounded-br-none">
+            {renderSelector(
+              voiceOptions,
+              selectedVoice,
+              handleSelection(setSelectedVoice)
+            )}
+          </div>
+        </div>
+        <div className="w-1/2 h-1/2 pl-1 pb-1">
+          <div className="bg-slate-950/20 h-full flex items-center justify-center rounded-3xl rounded-bl-none">
+            {renderSelector(
+              languageOptions,
+              selectedLanguage,
+              handleSelection(setSelectedLanguage)
+            )}
+          </div>
+        </div>
+        <div className="w-1/2 h-1/2 pt-1 pr-1">
+          <div className="bg-slate-950/20 h-full flex items-center justify-center rounded-3xl rounded-tr-none">
+            {renderSelector(
+              nameOptions,
+              selectedName,
+              handleSelection(setSelectedName)
+            )}
+          </div>
+        </div>
+        <div className="w-1/2 h-1/2 pl-1 pt-1">
+          <div className="bg-slate-950/20 h-full flex items-center justify-center rounded-3xl rounded-tl-none">
+            {renderSelector(
+              topicOptions,
+              selectedTopic,
+              handleSelection(setSelectedTopic)
+            )}
+          </div>
+        </div>
+
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+          <CircularProgressBar progress={progress} />
+          <Button
+            onClick={togglePlayPause}
+            className="rounded-full w-20 h-20 flex items-center justify-center shadow-lg transition-all duration-300 bg-slate-800/50 hover:bg-slate-900/70 z-10 relative"
+            aria-label={isPlaying ? "Pause audio" : "Play audio"}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <Loader2 size={40} className="text-white animate-spin" />
+            ) : isPlaying ? (
+              <Pause size={40} className="text-white" />
+            ) : (
+              <Play size={40} className="text-white" />
+            )}
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex justify-between items-end p-4">
+        <div className="bg-gray-900 bg-opacity-50 rounded-lg p-2 text-white text-sm hover:bg-opacity-100 transition-opacity duration-300">
+          © 2024 🍯 + 🎧 = 🫠
+        </div>
+        <div className="flex space-x-2">
+          <Button className="bg-gray-900 bg-opacity-50 rounded-lg p-2 text-white hover:bg-opacity-100 transition-opacity duration-300">
+            <Github size={20} />
+          </Button>
+          <Button className="bg-gray-900 bg-opacity-50 rounded-lg p-2 text-white hover:bg-opacity-100 transition-opacity duration-300">
+            <Twitter size={20} />
+          </Button>
+          <Button className="bg-gray-900 bg-opacity-50 rounded-lg p-2 text-white hover:bg-opacity-100 transition-opacity duration-300">
+            <Facebook size={20} />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
