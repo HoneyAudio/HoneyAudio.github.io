@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -11,22 +12,35 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import cloud from "d3-cloud";
-import {
-  Facebook,
-  Github,
-  Loader2,
-  Menu,
-  Pause,
-  Play,
-  Twitter,
-} from "lucide-react";
+import { Github, Loader2, Menu, Pause, Play, Twitter } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface Option {
   text: string;
   value: string;
   size: number;
-  gender?: number;
+  gender?: "male" | "female";
+  languageCode?: string;
+}
+
+interface DataJson {
+  languages: { name: string; code: string }[];
+  voices: {
+    name: string;
+    elevenlabs_voice_id: string;
+    gender: string;
+    language_id: number;
+  }[];
+  names: { name: string; gender: string; language_id: number }[];
+  categories: { name: string; language_id: number }[];
+  tts: {
+    voice_id: number;
+    category_id: number;
+    name_id: number | null;
+    language_id: number;
+    audio_file: string;
+    symbols: number;
+  }[];
 }
 
 const fetchOptions = async (): Promise<{
@@ -34,62 +48,56 @@ const fetchOptions = async (): Promise<{
   languageOptions: Option[];
   nameOptions: Option[];
   categoryOptions: Option[];
+  data: DataJson;
 }> => {
-  // Simulating API call
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-  return {
-    voiceOptions: [
-      { text: "👩 Female", value: "female", size: 0 },
-      { text: "👨 Male", value: "male", size: 0 },
-    ],
-    languageOptions: [
-      { text: "🇩🇪 German", value: "de", size: 0 },
-      { text: "🇺🇸 English", value: "en", size: 0 },
-      { text: "🇪🇸 Spanish", value: "es", size: 0 },
-      { text: "🇫🇷 French", value: "fr", size: 0 },
-      { text: "🇮🇹 Italian", value: "it", size: 0 },
-      { text: "🇵🇹 Portuguese", value: "pt", size: 0 },
-    ],
-    nameOptions: [
-      { text: "Ava", value: "ava", size: 0, gender: 1 },
-      { text: "Emma", value: "emma", size: 0, gender: 1 },
-      { text: "Isabella", value: "isabella", size: 0, gender: 1 },
-      { text: "James", value: "james", size: 0, gender: 0 },
-      { text: "John", value: "john", size: 0, gender: 0 },
-      { text: "Michael", value: "michael", size: 0, gender: 0 },
-      { text: "Olivia", value: "olivia", size: 0, gender: 1 },
-      { text: "Robert", value: "robert", size: 0, gender: 0 },
-      { text: "Sophia", value: "sophia", size: 0, gender: 1 },
-      { text: "William", value: "william", size: 0, gender: 0 },
-    ],
-    categoryOptions: [
-      { text: "🏔️ Adventure", value: "adventure", size: 0 },
-      { text: "🤣 Comedy", value: "comedy", size: 0 },
-      { text: "🎭 Drama", value: "drama", size: 0 },
-      { text: "🕵️ Mystery", value: "mystery", size: 0 },
-      { text: "💖 Romance", value: "romance", size: 0 },
-      { text: "🚀 Sci-Fi", value: "scifi", size: 0 },
-    ],
-  };
+  const response = await fetch("https://tourins.github.io/data.json?8");
+  const data: DataJson = await response.json();
+
+  const languages = data.languages.map((lang, index) => ({
+    id: index,
+    ...lang,
+  }));
+
+  const languageOptions: Option[] = languages.map((lang) => ({
+    text: lang.name,
+    value: lang.code,
+    size: 0,
+  }));
+
+  const voiceOptions: Option[] = data.voices.map((voice, index) => ({
+    text: voice.name,
+    value: String(index),
+    size: 0,
+    gender: voice.gender as "male" | "female",
+    languageCode: languages[voice.language_id].code,
+  }));
+
+  const nameOptions: Option[] = data.names.map((name, index) => ({
+    text: name.name,
+    value: String(index),
+    size: 0,
+    gender: name.gender as "male" | "female",
+    languageCode: languages[name.language_id].code,
+  }));
+
+  const categoryOptions: Option[] = data.categories.map((category, index) => ({
+    text: category.name,
+    value: String(index),
+    size: 0,
+    languageCode: languages[category.language_id].code,
+  }));
+
+  return { voiceOptions, languageOptions, nameOptions, categoryOptions, data };
 };
 
-interface WordCloudProps {
+const WordCloud: React.FC<{
   words: Option[];
   width: number;
   height: number;
   onSelect: (value: string) => void;
   selectedWord: string;
   isMobile: boolean;
-}
-
-const WordCloud: React.FC<WordCloudProps> = ({
-  words,
-  width,
-  height,
-  onSelect,
-  selectedWord,
-  isMobile,
-}) => {
+}> = ({ words, width, height, onSelect, selectedWord, isMobile }) => {
   const [cloudWords, setCloudWords] = useState<
     { text: string; size: number; x: number; y: number }[]
   >([]);
@@ -112,10 +120,9 @@ const WordCloud: React.FC<WordCloudProps> = ({
       )
       .padding(2)
       .rotate(() => 0)
-      .spiral("archimedean")
       .font("Jura")
       .fontSize((d) => d.size!)
-      .on("end", (computedWords) => {
+      .on("end", (computedWords) =>
         setCloudWords(
           computedWords as {
             text: string;
@@ -123,8 +130,8 @@ const WordCloud: React.FC<WordCloudProps> = ({
             x: number;
             y: number;
           }[]
-        );
-      })
+        )
+      )
       .start();
   }, [words, width, height]);
 
@@ -139,14 +146,15 @@ const WordCloud: React.FC<WordCloudProps> = ({
     }
   };
 
-  const handleSelectChange = (value: string) => {
-    onSelect(value);
-    setShowSelect(false);
-  };
-
   if (isMobile && showSelect) {
     return (
-      <Select onValueChange={handleSelectChange} value={selectedWord}>
+      <Select
+        onValueChange={(value) => {
+          onSelect(value);
+          setShowSelect(false);
+        }}
+        value={selectedWord}
+      >
         <SelectTrigger className="w-[180px] bg-gray-800 text-white border-gray-700 focus:ring-0 focus:ring-offset-0">
           <SelectValue placeholder="Select option" />
         </SelectTrigger>
@@ -231,15 +239,11 @@ const CircularProgressBar: React.FC<{ progress: number }> = ({ progress }) => {
   );
 };
 
-export default function Component() {
-  const [voiceOptions, setVoiceOptions] = useState<Option[]>([]);
-  const [languageOptions, setLanguageOptions] = useState<Option[]>([]);
-  const [nameOptions, setNameOptions] = useState<Option[]>([]);
-  const [categoryOptions, setcategoryOptions] = useState<Option[]>([]);
-  const [selectedVoice, setSelectedVoice] = useState("");
-  const [selectedLanguage, setSelectedLanguage] = useState("");
-  const [selectedName, setSelectedName] = useState("");
-  const [selectedTopic, setSelectedTopic] = useState("");
+export default function EnhancedAudioPlayer() {
+  const [options, setOptions] = useState<{ [key: string]: Option[] }>({});
+  const [selectedOptions, setSelectedOptions] = useState<{
+    [key: string]: string;
+  }>({});
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -249,45 +253,62 @@ export default function Component() {
   const [currentAudioIndex, setCurrentAudioIndex] = useState(0);
   const [showAddNameAlert, setShowAddNameAlert] = useState(false);
   const [newName, setNewName] = useState("");
-  const [selectedGender, setSelectedGender] = useState(0); // 0 for male, 1 for female
+  const [selectedNameGender, setSelectedNameGender] = useState<
+    "male" | "female"
+  >("male");
+  const [dataJson, setDataJson] = useState<DataJson | null>(null);
+  const [isInitialLoading, setIsInitialLoading] = useState(true); // Added loading state
   const audioRef = useRef<HTMLAudioElement | null>(new Audio());
-  const nextAudioRef = useRef<HTMLAudioElement | null>(new Audio());
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchData = async () => {
-      const options = await fetchOptions();
-      setVoiceOptions(options.voiceOptions);
-      setLanguageOptions(options.languageOptions);
-      setNameOptions(options.nameOptions);
-      setcategoryOptions(options.categoryOptions);
+      setIsInitialLoading(true); // Set loading state to true
+      const fetchedOptions = await fetchOptions();
+      setOptions({
+        voices: fetchedOptions.voiceOptions,
+        languages: fetchedOptions.languageOptions,
+        names: fetchedOptions.nameOptions,
+        categories: fetchedOptions.categoryOptions,
+      });
+      setDataJson(fetchedOptions.data);
 
-      // Set default selections
+      // Set default language
       const browserLang = navigator.language.split("-")[0];
       const defaultLang =
-        options.languageOptions.find((lang) => lang.value === browserLang) ||
-        options.languageOptions.find((lang) => lang.value === "en");
-      if (defaultLang) setSelectedLanguage(defaultLang.value);
+        fetchedOptions.languageOptions.find(
+          (lang) => lang.value === browserLang
+        ) ||
+        fetchedOptions.languageOptions.find((lang) => lang.value === "en") ||
+        fetchedOptions.languageOptions[0];
+      setSelectedOptions((prev) => ({ ...prev, language: defaultLang.value }));
 
-      setSelectedVoice(
-        options.voiceOptions[
-          Math.floor(Math.random() * options.voiceOptions.length)
-        ].value
+      // Load user selections from localStorage
+      const savedSelections = ["language", "voice", "name", "category"].reduce(
+        (acc, key) => {
+          const saved = localStorage.getItem(
+            `selected${key.charAt(0).toUpperCase() + key.slice(1)}`
+          );
+          if (saved) acc[key] = saved;
+          return acc;
+        },
+        {} as { [key: string]: string }
       );
-      setSelectedTopic(
-        options.categoryOptions[
-          Math.floor(Math.random() * options.categoryOptions.length)
-        ].value
-      );
+      setSelectedOptions((prev) => ({ ...prev, ...savedSelections }));
+
+      const savedGender = localStorage.getItem("selectedNameGender") as
+        | "male"
+        | "female"
+        | null;
+      if (savedGender) setSelectedNameGender(savedGender);
+
+      setIsInitialLoading(false); // Set loading state to false after data is fetched
     };
-
     fetchData();
   }, []);
 
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
@@ -303,94 +324,143 @@ export default function Component() {
       }
     };
     document.addEventListener("click", handleClickOutside);
-    return () => {
-      document.removeEventListener("click", handleClickOutside);
-    };
+    return () => document.removeEventListener("click", handleClickOutside);
   }, [showMenu]);
 
-  const simulateAPICall = async () => {
+  const updatePlaylist = useCallback(async () => {
+    if (!dataJson) return [];
+
     setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    const newAudioFiles = [
-      "https://download.samplelib.com/mp3/sample-3s.mp3",
-      "https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3",
-      "https://download.samplelib.com/mp3/sample-6s.mp3",
-      "https://download.samplelib.com/mp3/sample-9s.mp3",
-    ];
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const selectedLanguageId = dataJson.languages.findIndex(
+      (lang) => lang.code === selectedOptions.language
+    );
+    const selectedVoiceId = parseInt(selectedOptions.voice);
+    const selectedNameId = selectedOptions.name
+      ? parseInt(selectedOptions.name)
+      : null;
+    const selectedCategoryId = parseInt(selectedOptions.category);
+
+    let personalizedTTS: any[] = [];
+    let nonPersonalizedTTS: any[] = [];
+
+    if (selectedNameId !== null) {
+      personalizedTTS = dataJson.tts.filter(
+        (tts) =>
+          tts.voice_id === selectedVoiceId &&
+          tts.category_id === selectedCategoryId &&
+          tts.language_id === selectedLanguageId &&
+          tts.name_id === selectedNameId
+      );
+    }
+
+    nonPersonalizedTTS = dataJson.tts.filter(
+      (tts) =>
+        tts.voice_id === selectedVoiceId &&
+        tts.category_id === selectedCategoryId &&
+        tts.language_id === selectedLanguageId &&
+        tts.name_id === null
+    );
+
+    const shuffledNonPersonalizedTTS = nonPersonalizedTTS.sort(
+      () => 0.5 - Math.random()
+    );
+    const limitedTTS = [
+      ...personalizedTTS,
+      ...shuffledNonPersonalizedTTS,
+    ].slice(0, 20);
+    const newAudioFiles = limitedTTS.map(
+      (tts) => `https://tourins.github.io/audios/${tts.audio_file}`
+    );
+
     setAudioFiles(newAudioFiles);
     setCurrentAudioIndex(0);
     setIsLoading(false);
     return newAudioFiles;
-  };
+  }, [dataJson, selectedOptions]);
 
   const handleSelection = useCallback(
-    (setter: React.Dispatch<React.SetStateAction<string>>) =>
-      async (value: string) => {
-        if (setter === setSelectedName && value === selectedName) {
-          setter("");
-        } else {
-          setter(value);
+    async (key: string, value: string) => {
+      if (selectedOptions[key] === value) return; // Don't update if the same option is selected
+
+      setSelectedOptions((prev) => {
+        const newOptions = { ...prev, [key]: value };
+        if (key === "language") {
+          // Reset voice, name, and category when language changes
+          delete newOptions.voice;
+          delete newOptions.name;
+          delete newOptions.category;
         }
-        if (audioRef.current) {
-          audioRef.current.pause();
-          audioRef.current.src = "";
-        }
-        setIsPlaying(false);
-        setProgress(0);
-        const newAudioFiles = await simulateAPICall();
-        loadAudio(newAudioFiles[0], newAudioFiles[1]);
-      },
-    [selectedName]
+        // Save to localStorage
+        localStorage.setItem(
+          `selected${key.charAt(0).toUpperCase() + key.slice(1)}`,
+          value
+        );
+        return newOptions;
+      });
+
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+      }
+      setIsPlaying(false);
+      setProgress(0);
+      const newAudioFiles = await updatePlaylist();
+      if (newAudioFiles.length > 0) {
+        loadAudio(newAudioFiles[0]);
+      }
+    },
+    [selectedOptions, updatePlaylist]
   );
 
-  const loadAudio = (currentAudioUrl: string, nextAudioUrl?: string) => {
+  const loadAudio = (currentAudioUrl: string) => {
     if (audioRef.current) {
       audioRef.current.src = currentAudioUrl;
       audioRef.current.load();
     }
-    if (nextAudioUrl && nextAudioRef.current) {
-      nextAudioRef.current.src = nextAudioUrl;
-      nextAudioRef.current.load();
-    }
   };
-
-  useEffect(() => {
-    (async () => {
-      const newAudioFiles = await simulateAPICall();
-      loadAudio(newAudioFiles[0], newAudioFiles[1]);
-    })();
-  }, []);
 
   const playNextAudio = useCallback(() => {
     if (currentAudioIndex < audioFiles.length - 1) {
       setCurrentAudioIndex((prevIndex) => prevIndex + 1);
       const currentAudio = audioFiles[currentAudioIndex + 1];
-      const nextAudio = audioFiles[currentAudioIndex + 2];
-      loadAudio(currentAudio, nextAudio);
+      loadAudio(currentAudio);
       audioRef.current?.play();
     } else {
       setCurrentAudioIndex(0);
       setIsPlaying(false);
       setProgress(0);
-      (async () => {
-        const newAudioFiles = await simulateAPICall();
-        loadAudio(newAudioFiles[0], newAudioFiles[1]);
-      })();
+      updatePlaylist().then((newAudioFiles) => {
+        if (newAudioFiles.length > 0) {
+          loadAudio(newAudioFiles[0]);
+        }
+      });
     }
-  }, [audioFiles, currentAudioIndex]);
+  }, [audioFiles, currentAudioIndex, updatePlaylist]);
 
   const togglePlayPause = useCallback(() => {
-    if (selectedLanguage && selectedVoice && selectedTopic) {
+    if (
+      selectedOptions.language &&
+      selectedOptions.voice &&
+      selectedOptions.category &&
+      audioFiles.length > 0
+    ) {
       if (audioRef.current) {
         if (isPlaying) {
           audioRef.current.pause();
+          setIsPlaying(false);
         } else {
-          audioRef.current.play();
+          loadAudio(audioFiles[currentAudioIndex]);
+          audioRef.current.play().catch((error) => {
+            console.error("Error playing audio:", error);
+            setIsPlaying(false);
+          });
+          setIsPlaying(true);
         }
-        setIsPlaying(!isPlaying);
       }
     }
-  }, [isPlaying, selectedLanguage, selectedVoice, selectedTopic]);
+  }, [isPlaying, selectedOptions, audioFiles, currentAudioIndex]);
 
   useEffect(() => {
     if (!audioRef.current) return;
@@ -400,8 +470,9 @@ export default function Component() {
     const updateProgress = () => {
       if (audio.duration) {
         const currentProgress =
-          audio.currentTime / audio.duration + currentAudioIndex;
-        setProgress(currentProgress / audioFiles.length);
+          (audio.currentTime / audio.duration + currentAudioIndex) /
+          audioFiles.length;
+        setProgress(currentProgress);
       }
     };
 
@@ -414,26 +485,61 @@ export default function Component() {
     };
   }, [audioFiles, currentAudioIndex, playNextAudio]);
 
-  const filteredNameOptions = useMemo(() => {
-    return nameOptions.filter((name) => name.gender === selectedGender);
-  }, [nameOptions, selectedGender]);
+  const filteredOptions = useMemo(
+    () => ({
+      voices:
+        options.voices?.filter(
+          (v) => v.languageCode === selectedOptions.language
+        ) || [],
+      categories:
+        options.categories?.filter(
+          (c) => c.languageCode === selectedOptions.language
+        ) || [],
+    }),
+    [options.voices, options.categories, selectedOptions.language]
+  );
+
+  const filteredNames = useMemo(
+    () =>
+      options.names?.filter(
+        (n) =>
+          n.languageCode === selectedOptions.language &&
+          n.gender === selectedNameGender
+      ) || [],
+    [options.names, selectedOptions.language, selectedNameGender]
+  );
 
   const renderSelector = (
+    key: string,
     options: Option[],
     selected: string,
-    onSelect: (value: string) => void
+    isRequired: boolean
   ) => {
     const containerWidth = containerRef.current?.offsetWidth || 240;
     const containerHeight = containerRef.current?.offsetHeight || 280;
     return (
-      <WordCloud
-        words={options}
-        width={Math.max(240, containerWidth)}
-        height={Math.max(280, containerHeight)}
-        onSelect={onSelect}
-        selectedWord={selected}
-        isMobile={isMobile}
-      />
+      <div
+        className={`relative ${
+          isRequired && !selected && options.length > 0
+            ? "bg-red-500/20 rounded-3xl"
+            : ""
+        }`}
+      >
+        {options.length > 0 ? (
+          <WordCloud
+            words={options}
+            width={Math.max(240, containerWidth)}
+            height={Math.max(280, containerHeight)}
+            onSelect={(value) => handleSelection(key, value)}
+            selectedWord={selected}
+            isMobile={isMobile}
+          />
+        ) : (
+          <div className="flex items-center justify-center h-full text-white text-center p-4">
+            No options available with current settings.
+          </div>
+        )}
+      </div>
     );
   };
 
@@ -448,198 +554,228 @@ export default function Component() {
     }
   };
 
-  const handleGenderChange = (gender: number) => {
-    setSelectedGender(gender);
-    setSelectedName("");
+  const handleNameGenderChange = (gender: "male" | "female") => {
+    setSelectedNameGender(gender);
+    localStorage.setItem("selectedNameGender", gender);
+    setSelectedOptions((prev) => ({ ...prev, name: "" }));
   };
+
+  useEffect(() => {
+    updatePlaylist();
+  }, [updatePlaylist]);
 
   return (
     <div
       className="h-screen w-screen flex flex-col justify-between bg-gradient-to-br from-purple-800 via-blue-900 to-teal-800 font-jura overflow-hidden"
       style={{ minWidth: "360px" }}
     >
-      <div className="flex justify-between items-start p-4">
-        <div className="bg-gray-900 bg-opacity-50 rounded-lg p-2 text-white font-bold text-xl hover:bg-opacity-100 transition-opacity duration-300">
-          honey 🍯 audio
+      {isInitialLoading ? ( // Added loading indicator
+        <div className="flex items-center justify-center h-full">
+          <Loader2 size={40} className="text-white animate-spin" />
         </div>
-        <div className="relative menu-container">
-          <Button
-            onClick={() => setShowMenu(!showMenu)}
-            className="bg-gray-900 bg-opacity-50 rounded-lg p-2 text-white hover:bg-opacity-100 transition-opacity duration-300"
-          >
-            <Menu />
-          </Button>
-          {showMenu && (
-            <div className="absolute right-0 mt-2 w-48 bg-slate-900 bg-opacity-90 rounded-lg shadow-xl z-10">
-              <a
-                href="#"
-                className="block px-4 py-2 text-white hover:bg-slate-800/50 rounded-lg"
+      ) : (
+        <>
+          <div className="flex justify-between items-start p-4">
+            <div className="bg-gray-900 bg-opacity-50 rounded-lg p-2 text-white font-bold text-xl hover:bg-opacity-100 transition-opacity duration-300">
+              honey 🍯 audio
+            </div>
+            <div className="relative menu-container">
+              <Button
+                onClick={() => setShowMenu(!showMenu)}
+                className="bg-gray-900 bg-opacity-50 rounded-lg p-2 text-white hover:bg-opacity-100 transition-opacity duration-300"
               >
-                Profile
-              </a>
-              <a
-                href="#"
-                className="block px-4 py-2 text-white hover:bg-slate-800/50 rounded-lg"
+                <Menu />
+              </Button>
+              {showMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-slate-900 bg-opacity-90 rounded-lg shadow-xl z-10">
+                  <a
+                    href="#"
+                    className="block px-4 py-2 text-white hover:bg-slate-800/50 rounded-lg"
+                  >
+                    Profile
+                  </a>
+                  <a
+                    href="#"
+                    className="block px-4 py-2 text-white hover:bg-slate-800/50 rounded-lg"
+                  >
+                    Settings
+                  </a>
+                  <a
+                    href="#"
+                    className="block px-4 py-2 text-white hover:bg-slate-800/50 rounded-lg"
+                  >
+                    Logout
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-grow m-6 relative">
+            <div className="w-1/2 h-1/2 absolute top-0 left-0">
+              <div
+                className="bg-slate-950/20 h-full flex items-center justify-center rounded-3xl rounded-br-none"
+                ref={containerRef}
               >
-                Settings
-              </a>
-              <a
-                href="#"
-                className="block px-4 py-2 text-white hover:bg-slate-800/50 rounded-lg"
+                {renderSelector(
+                  "voice",
+                  filteredOptions.voices,
+                  selectedOptions.voice,
+                  true
+                )}
+              </div>
+            </div>
+            <div className="w-1/2 h-1/2 absolute top-0 right-0">
+              <div
+                className="bg-slate-950/20 h-full flex items-center justify-center rounded-3xl rounded-bl-none"
+                ref={containerRef}
               >
-                Logout
-              </a>
+                {renderSelector(
+                  "language",
+                  options.languages || [],
+                  selectedOptions.language,
+                  true
+                )}
+              </div>
+            </div>
+            <div className="w-1/2 h-1/2 absolute bottom-0 left-0">
+              <div
+                className="bg-slate-950/20 h-full flex items-center justify-center rounded-3xl rounded-tr-none relative"
+                ref={containerRef}
+              >
+                {renderSelector(
+                  "name",
+                  filteredNames,
+                  selectedOptions.name,
+                  false
+                )}
+                <Button
+                  onClick={() => setShowAddNameAlert(true)}
+                  className="absolute bottom-0 right-0 bg-slate-800/50 hover:bg-slate-900/70 text-white/50 hover:text-white text-xs py-1 px-2 rounded-br-3xl"
+                >
+                  Add my name
+                </Button>
+                <div className="absolute top-0 left-0 flex space-x-2">
+                  <Button
+                    onClick={() => handleNameGenderChange("male")}
+                    className={`text-2xl px-2 py-1 rounded-tl-3xl ${
+                      selectedNameGender === "male"
+                        ? "opacity-100 scale-110"
+                        : "opacity-50"
+                    }`}
+                  >
+                    👨
+                  </Button>
+                </div>
+                <div className="absolute bottom-0 left-0 flex space-x-2">
+                  <Button
+                    onClick={() => handleNameGenderChange("female")}
+                    className={`text-2xl px-2 py-1 rounded-bl-3xl ${
+                      selectedNameGender === "female"
+                        ? "opacity-100 scale-110"
+                        : "opacity-50"
+                    }`}
+                  >
+                    👩
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <div className="w-1/2 h-1/2 absolute bottom-0 right-0">
+              <div
+                className="bg-slate-950/20 h-full flex items-center justify-center rounded-3xl rounded-tl-none"
+                ref={containerRef}
+              >
+                {renderSelector(
+                  "category",
+                  filteredOptions.categories,
+                  selectedOptions.category,
+                  true
+                )}
+              </div>
+            </div>
+
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
+              <CircularProgressBar progress={progress} />
+              <Button
+                onClick={togglePlayPause}
+                className={`rounded-full w-20 h-20 flex items-center justify-center shadow-lg transition-all duration-300 relative ${
+                  audioFiles.length === 0
+                    ? "bg-red-500/50 hover:bg-red-600/70"
+                    : "bg-slate-800/50 hover:bg-slate-900/70"
+                }`}
+                aria-label={isPlaying ? "Pause audio" : "Play audio"}
+                disabled={
+                  isLoading ||
+                  !selectedOptions.language ||
+                  !selectedOptions.voice ||
+                  !selectedOptions.category ||
+                  audioFiles.length === 0
+                }
+              >
+                {isLoading ? (
+                  <Loader2 size={40} className="text-white animate-spin" />
+                ) : isPlaying ? (
+                  <Pause size={40} className="text-white" />
+                ) : (
+                  <Play size={40} className="text-white" />
+                )}
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-end p-4">
+            <div className="bg-gray-900 bg-opacity-50 rounded-lg p-2 text-white text-sm hover:bg-opacity-100 transition-opacity duration-300">
+              © 2024 🍯 + 🎧 = 🫠
+            </div>
+            <div className="flex space-x-2">
+              <Button className="bg-gray-900 bg-opacity-50 rounded-lg p-2 text-white hover:bg-opacity-100 transition-opacity duration-300">
+                <a href="https://github.com/HoneyAudio" target="_blank">
+                  <Github size={20} />
+                </a>
+              </Button>
+              <Button className="bg-gray-900 bg-opacity-50 rounded-lg p-2 text-white hover:bg-opacity-100 transition-opacity duration-300">
+                <a href="https://x.com/honeydotaudio" target="_blank">
+                  <Twitter size={20} />
+                </a>
+              </Button>
+            </div>
+          </div>
+
+          {showAddNameAlert && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <Alert className="w-96 bg-slate-800 text-white border-slate-700 add-name-alert">
+                <AlertTitle className="text-lg font-semibold mb-2">
+                  Add a new name
+                </AlertTitle>
+                <AlertDescription>
+                  <Input
+                    type="text"
+                    placeholder="Enter name"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    className="mb-4 bg-slate-700 text-white border-slate-600"
+                  />
+                  <div className="flex justify-end space-x-2">
+                    <Button
+                      onClick={() => setShowAddNameAlert(false)}
+                      variant="outline"
+                      className="bg-slate-700 text-white border-slate-600 hover:bg-slate-600 hover:text-white"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleAddName}
+                      className="bg-blue-600 text-white hover:bg-blue-700"
+                    >
+                      Tweet #honeyAddMyName
+                    </Button>
+                  </div>
+                </AlertDescription>
+              </Alert>
             </div>
           )}
-        </div>
-      </div>
-
-      <div className="flex flex-grow m-6 relative">
-        <div className="w-1/2 h-1/2 absolute top-0 left-0">
-          <div
-            className="bg-slate-950/20 h-full flex items-center justify-center rounded-3xl rounded-br-none"
-            ref={containerRef}
-          >
-            {renderSelector(
-              voiceOptions,
-              selectedVoice,
-              handleSelection(setSelectedVoice)
-            )}
-          </div>
-        </div>
-        <div className="w-1/2 h-1/2 absolute top-0 right-0">
-          <div
-            className="bg-slate-950/20 h-full flex items-center justify-center rounded-3xl rounded-bl-none"
-            ref={containerRef}
-          >
-            {renderSelector(
-              languageOptions,
-              selectedLanguage,
-              handleSelection(setSelectedLanguage)
-            )}
-          </div>
-        </div>
-        <div className="w-1/2 h-1/2 absolute bottom-0 left-0">
-          <div
-            className="bg-slate-950/20 h-full flex items-center justify-center rounded-3xl rounded-tr-none relative"
-            ref={containerRef}
-          >
-            {renderSelector(
-              filteredNameOptions,
-              selectedName,
-              handleSelection(setSelectedName)
-            )}
-            <Button
-              onClick={() => setShowAddNameAlert(true)}
-              className="absolute bottom-0 right-0 bg-slate-800/50 hover:bg-slate-900/70 text-white/50 hover:text-white text-xs py-1 px-2 rounded-br-3xl"
-            >
-              Add my name
-            </Button>
-            <div className="absolute top-0 left-0 flex space-x-2">
-              <Button
-                onClick={() => handleGenderChange(0)}
-                className={`text-2xl px-2 py-1 rounded-tl-3xl ${
-                  selectedGender === 0 ? "opacity-100 scale-110" : "opacity-50"
-                }`}
-              >
-                👨
-              </Button>
-            </div>
-            <div className="absolute bottom-0 left-0 flex space-x-2">
-              <Button
-                onClick={() => handleGenderChange(1)}
-                className={`text-2xl px-2 py-1 rounded-bl-3xl  ${
-                  selectedGender === 1 ? "opacity-100 scale-110" : "opacity-50"
-                }`}
-              >
-                👩
-              </Button>
-            </div>
-          </div>
-        </div>
-        <div className="w-1/2 h-1/2 absolute bottom-0 right-0">
-          <div
-            className="bg-slate-950/20 h-full flex items-center justify-center rounded-3xl rounded-tl-none"
-            ref={containerRef}
-          >
-            {renderSelector(
-              categoryOptions,
-              selectedTopic,
-              handleSelection(setSelectedTopic)
-            )}
-          </div>
-        </div>
-
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
-          <CircularProgressBar progress={progress} />
-          <Button
-            onClick={togglePlayPause}
-            className="rounded-full w-20 h-20 flex items-center justify-center shadow-lg transition-all duration-300 bg-slate-800/50 hover:bg-slate-900/70 relative"
-            aria-label={isPlaying ? "Pause audio" : "Play audio"}
-            disabled={
-              isLoading || !selectedLanguage || !selectedVoice || !selectedTopic
-            }
-          >
-            {isLoading ? (
-              <Loader2 size={40} className="text-white animate-spin" />
-            ) : isPlaying ? (
-              <Pause size={40} className="text-white" />
-            ) : (
-              <Play size={40} className="text-white" />
-            )}
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex justify-between items-end p-4">
-        <div className="bg-gray-900 bg-opacity-50 rounded-lg p-2 text-white text-sm hover:bg-opacity-100 transition-opacity duration-300">
-          © 2024 🍯 + 🎧 = 🫠
-        </div>
-        <div className="flex space-x-2">
-          <Button className="bg-gray-900 bg-opacity-50 rounded-lg p-2 text-white hover:bg-opacity-100 transition-opacity duration-300">
-            <Github size={20} />
-          </Button>
-          <Button className="bg-gray-900 bg-opacity-50 rounded-lg p-2 text-white hover:bg-opacity-100 transition-opacity duration-300">
-            <Twitter size={20} />
-          </Button>
-          <Button className="bg-gray-900 bg-opacity-50 rounded-lg p-2 text-white hover:bg-opacity-100 transition-opacity duration-300">
-            <Facebook size={20} />
-          </Button>
-        </div>
-      </div>
-
-      {showAddNameAlert && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <Alert className="w-96 bg-slate-800 text-white border-slate-700 add-name-alert">
-            <AlertTitle className="text-lg font-semibold mb-2">
-              Add a new name
-            </AlertTitle>
-            <AlertDescription>
-              <Input
-                type="text"
-                placeholder="Enter name"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                className="mb-4 bg-slate-700 text-white border-slate-600"
-              />
-              <div className="flex justify-end space-x-2">
-                <Button
-                  onClick={() => setShowAddNameAlert(false)}
-                  variant="outline"
-                  className="bg-slate-700 text-white border-slate-600 hover:bg-slate-600 hover:text-white"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleAddName}
-                  className="bg-blue-600 text-white hover:bg-blue-700"
-                >
-                  Tweet #honeyAddMyName
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
-        </div>
+        </>
       )}
     </div>
   );
