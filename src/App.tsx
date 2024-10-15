@@ -50,7 +50,7 @@ const fetchOptions = async (): Promise<{
   categoryOptions: Option[];
   data: DataJson;
 }> => {
-  const response = await fetch("https://tourins.github.io/data.json?16");
+  const response = await fetch("https://tourins.github.io/data.json?17");
   const data: DataJson = await response.json();
 
   const languages = data.languages.map((lang, index) => ({
@@ -370,9 +370,13 @@ export default function EnhancedAudioPlayer() {
       ...personalizedTTS,
       ...shuffledNonPersonalizedTTS,
     ].slice(0, 20);
-    const newAudioFiles = limitedTTS.map(
-      (tts) => `https://tourins.github.io/audios/${tts.audio_file}`
+    const newAudioFiles = limitedTTS.map((tts) =>
+      selectedOptions.language !== "en"
+        ? `https://tourins.github.io/audios/${tts.audio_file}`
+        : `https://useast1buckets.s3.amazonaws.com/${tts.audio_file}`
     );
+
+    console.log(selectedOptions.language, newAudioFiles);
 
     setAudioFiles(newAudioFiles);
     setCurrentAudioIndex(0);
@@ -696,7 +700,11 @@ export default function EnhancedAudioPlayer() {
             </div>
 
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
-              <small className="text-white">demo audio</small>
+              {selectedOptions.language && selectedOptions.language !== "en" ? (
+                <small className="text-white">demo audio</small>
+              ) : (
+                <></>
+              )}
             </div>
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
               <CircularProgressBar progress={progress} />
