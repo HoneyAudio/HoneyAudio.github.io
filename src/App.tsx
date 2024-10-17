@@ -50,7 +50,7 @@ const fetchOptions = async (): Promise<{
   categoryOptions: Option[];
   data: DataJson;
 }> => {
-  const response = await fetch("https://tourins.github.io/data.json?17");
+  const response = await fetch("https://tourins.github.io/data.json?18");
   const data: DataJson = await response.json();
 
   const languages = data.languages.map((lang, index) => ({
@@ -373,10 +373,8 @@ export default function EnhancedAudioPlayer() {
     const newAudioFiles = limitedTTS.map((tts) =>
       selectedOptions.language !== "en"
         ? `https://tourins.github.io/audios/${tts.audio_file}`
-        : `https://useast1buckets.s3.amazonaws.com/${tts.audio_file}`
+        : `https://tourins.github.io/${tts.audio_file}`
     );
-
-    console.log(selectedOptions.language, newAudioFiles);
 
     setAudioFiles(newAudioFiles);
     setCurrentAudioIndex(0);
