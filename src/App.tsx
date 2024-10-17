@@ -548,7 +548,7 @@ export default function EnhancedAudioPlayer() {
   const handleAddName = () => {
     if (newName) {
       window.open(
-        `https://x.com/intent/post?text=Hi+%40honeydotaudio%21%0A%0AHoney.audio%2C+add+my+name+«${newName}»+🙏%0A%0A%23honeydotaudio+%23honeyaddmyname`,
+        `https://x.com/intent/post?text=Hi+%40honeydotaudio%21%0A%0AHoney%2C+add+my+name+«${newName}»+🙏%0A%0A%23honeydotaudio+%23honeyaddmyname`,
         "_blank"
       );
       setShowAddNameAlert(false);
