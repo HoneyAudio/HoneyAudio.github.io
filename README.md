@@ -25,5 +25,5 @@ Welcome to **Honey Audio**, a unique service that offers personalized, soothing,
 - **OpenAI API:** We use OpenAI's API to generate dynamic and meaningful affirmations, ensuring that the content feels fresh and relevant to each user.
 
 - **ElevenLabs API:** The ElevenLabs API allows us to create high-quality, soothing voice recordings for the affirmations. Each audio clip is generated based on the personalized text affirmation.
-  - https://github.com/HoneyAudio/elevenlabs-s3 - `pip install elevenlabs-s3`
-  - https://github.com/HoneyAudio/elevenlabs-haystack - `pip install elevenlabs-haystack`
+  - https://pypi.org/project/elevenlabs-s3/ - `pip install elevenlabs-s3`
+  - https://haystack.deepset.ai/integrations/elevenlabs - `pip install elevenlabs-haystack`
