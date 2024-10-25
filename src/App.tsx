@@ -50,7 +50,7 @@ const fetchOptions = async (): Promise<{
   categoryOptions: Option[];
   data: DataJson;
 }> => {
-  const response = await fetch("https://tourins.github.io/data.json?19");
+  const response = await fetch("https://tourins.github.io/data.json?20");
   const data: DataJson = await response.json();
 
   const languages = data.languages.map((lang, index) => ({
